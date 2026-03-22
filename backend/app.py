@@ -2,11 +2,17 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app, origins=os.environ.get("ALLOWED_ORIGINS", "*").split(","))
 
-DB_NAME = "cronan_ai.db"
+# On Render, mount a persistent disk at /data and store the DB there.
+# Locally it just sits in the backend folder as before.
+DB_DIR = os.environ.get("DB_DIR", os.path.dirname(os.path.abspath(__file__)))
+DB_NAME = os.path.join(DB_DIR, "cronan_ai.db")
 
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:

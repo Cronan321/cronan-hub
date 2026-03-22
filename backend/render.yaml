@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: cronan-ai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend-domain.vercel.app
+      - key: DB_DIR
+        value: /data
+    disk:
+      name: cronan-db
+      mountPath: /data
+      sizeGB: 1
