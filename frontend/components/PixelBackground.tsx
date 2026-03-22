@@ -10,6 +10,10 @@ export default function PixelBackground() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Non-null references for use inside the Particle class closure
+    const c = canvas;
+    const cx = ctx;
+
     let animationFrameId: number;
     let particles: any[] = [];
     const mouse = { x: -100, y: -100 };
@@ -18,8 +22,8 @@ export default function PixelBackground() {
     const particleCount = 600; // many of them
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      c.width = window.innerWidth;
+      c.height = window.innerHeight;
     };
 
     window.addEventListener('resize', resize);
@@ -39,25 +43,23 @@ export default function PixelBackground() {
       opacity: number;
 
       constructor() {
-        this.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
-        this.y = Math.random() * canvas.height;
-        this.size = gridSize - 1; // 1px gap between pixels
-        this.speedY = -(Math.random() * 0.6 + 0.2); // slow drift upward
-        // Silver tones — varying opacity for depth
-        const silver = Math.floor(Math.random() * 60 + 180); // 180–240 range
+        this.x = Math.floor(Math.random() * (c.width / gridSize)) * gridSize;
+        this.y = Math.random() * c.height;
+        this.size = gridSize - 1;
+        this.speedY = -(Math.random() * 0.6 + 0.2);
+        const silver = Math.floor(Math.random() * 60 + 180);
         this.color = `rgb(${silver}, ${silver + 5}, ${silver + 15})`;
-        this.opacity = Math.random() * 0.18 + 0.04; // mostly transparent
+        this.opacity = Math.random() * 0.18 + 0.04;
       }
 
       update() {
         this.y += this.speedY;
 
         if (this.y < -this.size) {
-          this.y = canvas.height + this.size;
-          this.x = Math.floor(Math.random() * (canvas.width / gridSize)) * gridSize;
+          this.y = c.height + this.size;
+          this.x = Math.floor(Math.random() * (c.width / gridSize)) * gridSize;
         }
 
-        // Mouse ripple — pixels near cursor brighten and scatter slightly
         const dx = mouse.x - this.x;
         const dy = mouse.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -72,12 +74,11 @@ export default function PixelBackground() {
       }
 
       draw() {
-        if (!ctx) return;
-        ctx.globalAlpha = this.opacity;
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = this.opacity > 0.4 ? 6 : 0;
-        ctx.shadowColor = this.color;
-        ctx.fillRect(this.x, this.y, this.size, this.size);
+        cx.globalAlpha = this.opacity;
+        cx.fillStyle = this.color;
+        cx.shadowBlur = this.opacity > 0.4 ? 6 : 0;
+        cx.shadowColor = this.color;
+        cx.fillRect(this.x, this.y, this.size, this.size);
       }
     }
 
@@ -89,11 +90,10 @@ export default function PixelBackground() {
     };
 
     const animate = () => {
-      // Metallic navy base — deep blue with a slight steel tone
-      ctx.fillStyle = 'rgb(8, 12, 28)';
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      cx.fillStyle = 'rgb(8, 12, 28)';
+      cx.globalAlpha = 1;
+      cx.shadowBlur = 0;
+      cx.fillRect(0, 0, c.width, c.height);
       particles.forEach(p => {
         p.update();
         p.draw();
