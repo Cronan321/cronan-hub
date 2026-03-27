@@ -55,6 +55,7 @@ export default function RootLayout({
           </div>
           <div className="mt-8 flex justify-center gap-6 text-xs text-slate-500">
             <a href="/guidelines" className="hover:text-slate-300 transition-colors">Operational Guidelines</a>
+            <a href="/investors" className="hover:text-slate-300 transition-colors">Investors</a>
             <a href="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
             <span>Rome, Georgia Office: 706.483.8307</span>
             <a href="/admin" className="hover:text-slate-400 transition-colors text-slate-700">Staff Login</a>

@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkLog Pro — Cronan AI</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body style="margin:0;padding:0;background:rgb(8,12,28)">
+<style>
+  :root {
+    --bg: rgb(8,12,28);
+    --card: rgba(17,27,50,0.92);
+    --border: rgba(71,85,105,0.6);
+    --cyan: #22d3ee; --cyan-dim: #0ea5e9;
+    --amber: #fbbf24; --green: #4ade80; --red: #f87171;
+    --text: #e2e8f0; --text-hi: #f8fafc; --text-lo: #94a3b8; --text-mid: #cbd5e1;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; color: var(--text); }
+
+  /* Background */
+  #wl-bg { position:fixed; inset:0; z-index:-1; background:var(--bg); overflow:hidden; }
+  #wl-bg::before { content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at 20% 30%, rgba(34,211,238,0.05) 0%, transparent 55%),
+                radial-gradient(circle at 80% 70%, rgba(251,191,36,0.04) 0%, transparent 55%); }
+  @keyframes wl-float { 0%{transform:translateY(0);opacity:.07} 50%{opacity:.15} 100%{transform:translateY(-100vh);opacity:0} }
+  .wl-pixel { position:absolute; width:9px; height:9px; background:rgba(200,215,235,.12); animation:wl-float linear infinite; }
+
+  /* Login */
+  .wl-login { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .wl-login-box { background:var(--card); border:1px solid var(--border); border-radius:1.25rem;
+    padding:2.25rem 2rem; width:100%; max-width:390px; backdrop-filter:blur(12px);
+    box-shadow:0 0 40px rgba(34,211,238,.08),0 20px 60px rgba(0,0,0,.5); }
+  .wl-login-box h2 { color:var(--text-hi); margin:0 0 .4rem; font-size:1.6rem; font-weight:800; }
+  .wl-login-subtitle { color:var(--text-lo); font-size:.85rem; margin-bottom:1.75rem; }
+  .wl-login-badge { display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .75rem;
+    border-radius:9999px; border:1px solid rgba(251,191,36,.3); background:rgba(251,191,36,.08);
+    color:var(--amber); font-size:.75rem; font-weight:600; letter-spacing:.05em; margin-bottom:1.5rem; }
+  .wl-login-badge-dot { width:6px; height:6px; border-radius:50%; background:var(--amber); animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* Inputs */
+  .wl-input { width:100%; padding:.65rem .9rem; margin-bottom:.85rem;
+    background:rgba(8,12,28,.95); border:1px solid #475569; border-radius:.6rem;
+    color:var(--text-hi); font-size:.95rem; outline:none; transition:border-color .2s,box-shadow .2s; }
+  .wl-input:focus { border-color:var(--cyan-dim); box-shadow:0 0 0 3px rgba(14,165,233,.15); }
+  .wl-input-sm { padding:.4rem .65rem; background:rgba(8,12,28,.95); border:1px solid #475569;
+    border-radius:.5rem; color:var(--text-hi); font-size:.85rem; width:110px; outline:none; transition:border-color .2s; }
+  .wl-input-sm:focus { border-color:var(--cyan-dim); }
+  .wl-input-sm.wide { width:180px; } .wl-input-sm.full { width:100%; }
+  select.wl-input-sm { background:rgba(8,12,28,.95); }
+
+  /* Buttons */
+  .wl-btn { padding:.55rem 1.25rem; border:none; border-radius:.65rem; cursor:pointer;
+    font-size:.9rem; font-weight:700; transition:all .2s; }
+  .wl-btn-primary { background:rgba(17,27,50,.9); color:var(--cyan); border:1px solid rgba(34,211,238,.4);
+    box-shadow:0 0 15px rgba(34,211,238,.15); }
+  .wl-btn-primary:hover { background:var(--cyan); color:var(--bg); box-shadow:0 0 25px rgba(34,211,238,.35); }
+  .wl-btn-danger { background:rgba(17,27,50,.9); color:var(--red); border:1px solid rgba(248,113,113,.35); }
+  .wl-btn-danger:hover { background:var(--red); color:#fff; }
+  .wl-btn-success { background:rgba(17,27,50,.9); color:var(--green); border:1px solid rgba(74,222,128,.35);
+    box-shadow:0 0 12px rgba(74,222,128,.12); }
+  .wl-btn-success:hover { background:var(--green); color:var(--bg); }
+  .wl-btn-warn { background:rgba(17,27,50,.9); color:var(--amber); border:1px solid rgba(251,191,36,.35); }
+  .wl-btn-warn:hover { background:var(--amber); color:var(--bg); }
+  .wl-btn-muted { background:rgba(51,65,85,.5); color:var(--text-mid); border:1px solid #475569; }
+  .wl-btn-muted:hover { background:#334155; color:var(--text-hi); }
+  .wl-btn-sm { padding:.3rem .75rem; font-size:.8rem; border-radius:.5rem; }
+  .wl-error { color:var(--red); font-size:.85rem; margin-top:.5rem; }
+
+  /* Nav */
+  .wl-nav { display:flex; gap:.5rem; padding:.9rem 1.5rem; background:rgba(8,12,28,.9);
+    border-bottom:1px solid var(--border); backdrop-filter:blur(12px);
+    flex-wrap:wrap; align-items:center; position:sticky; top:0; z-index:40; }
+  .wl-nav-title { color:var(--text-hi); font-weight:800; font-size:1.05rem; margin-right:auto; }
+  .wl-nav-title span { color:var(--cyan); }
+  .wl-tab { padding:.35rem 1rem; border-radius:.6rem; cursor:pointer; background:transparent;
+    border:1px solid #475569; color:var(--text-mid); font-size:.82rem; font-weight:600; transition:all .2s; }
+  .wl-tab:hover { border-color:var(--cyan-dim); color:var(--cyan); }
+  .wl-tab.active { background:rgba(14,165,233,.18); border-color:rgba(14,165,233,.55); color:var(--cyan);
+    box-shadow:0 0 12px rgba(14,165,233,.2); }
+
+  /* Cards */
+  .wl-content { padding:1.5rem; max-width:1150px; margin:0 auto; }
+  .wl-card { background:var(--card); border:1px solid var(--border); border-radius:1rem;
+    padding:1.35rem; margin-bottom:1.25rem; backdrop-filter:blur(8px); box-shadow:0 4px 24px rgba(0,0,0,.35); }
+  .wl-card h3 { color:var(--text-hi); margin:0 0 1rem; font-size:1rem; font-weight:700; }
+  .wl-section-title { color:var(--text-hi); font-size:.9rem; font-weight:700; margin:1rem 0 .6rem;
+    padding-bottom:.4rem; border-bottom:1px solid var(--border); }
+
+  /* Layout */
+  .wl-row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+  .wl-label { color:var(--text-mid); font-size:.82rem; font-weight:600; min-width:60px; }
+
+  /* Table */
+  .wl-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  .wl-table th { color:var(--text-mid); text-align:left; padding:.5rem .75rem;
+    border-bottom:1px solid var(--border); font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+  .wl-table td { padding:.55rem .75rem; border-bottom:1px solid rgba(71,85,105,.25); color:var(--text); }
+  .wl-table tr:hover td { background:rgba(14,165,233,.05); cursor:pointer; }
+
+  /* Compact multi-select location dropdown */
+  .wl-loc-dropdown { position:relative; display:inline-block; }
+  .wl-loc-trigger {
+    display:flex; align-items:center; justify-content:space-between; gap:.4rem;
+    padding:.35rem .65rem; background:rgba(8,12,28,.95); border:1px solid #475569;
+    border-radius:.5rem; color:var(--text-hi); font-size:.82rem; cursor:pointer;
+    min-width:160px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    transition:border-color .2s; user-select:none;
+  }
+  .wl-loc-trigger:hover { border-color:var(--cyan-dim); }
+  .wl-loc-trigger .arrow { font-size:.65rem; color:var(--text-lo); flex-shrink:0; }
+  .wl-loc-menu {
+    position:absolute; top:calc(100% + 4px); left:0; z-index:100;
+    background:rgba(15,23,42,.98); border:1px solid #475569; border-radius:.6rem;
+    padding:.35rem 0; min-width:200px; max-height:220px; overflow-y:auto;
+    box-shadow:0 8px 24px rgba(0,0,0,.5); backdrop-filter:blur(8px);
+  }
+  .wl-loc-option {
+    display:flex; align-items:center; gap:.5rem; padding:.35rem .75rem;
+    cursor:pointer; font-size:.82rem; color:var(--text-mid); transition:background .15s;
+  }
+  .wl-loc-option:hover { background:rgba(14,165,233,.1); color:var(--text-hi); }
+  .wl-loc-option.selected { color:var(--cyan); }
+  .wl-loc-option input[type=checkbox] { accent-color:var(--cyan-dim); width:14px; height:14px; flex-shrink:0; }
+
+  /* Deductions */
+  .wl-deduction-row { display:flex; gap:.5rem; align-items:center; margin-bottom:.5rem; }
+
+  /* Photo upload */
+  .wl-photo-area { border:2px dashed #475569; border-radius:.75rem; padding:1rem;
+    text-align:center; cursor:pointer; transition:border-color .2s; }
+  .wl-photo-area:hover { border-color:var(--cyan-dim); }
+  .wl-photo-preview { max-width:100%; max-height:200px; border-radius:.5rem; margin-top:.75rem; }
+
+  /* Badges */
+  .wl-badge { display:inline-block; padding:.15rem .55rem; border-radius:9999px; font-size:.72rem; font-weight:700; }
+  .wl-badge-green { background:rgba(74,222,128,.12); color:var(--green); border:1px solid rgba(74,222,128,.25); }
+  .wl-badge-red { background:rgba(248,113,113,.12); color:var(--red); border:1px solid rgba(248,113,113,.25); }
+
+  /* Analytics */
+  .wl-summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+  .wl-stat { background:rgba(8,12,28,.85); border:1px solid var(--border); border-radius:1rem;
+    padding:1.1rem; text-align:center; }
+  .wl-stat-val { font-size:1.7rem; font-weight:800; color:var(--cyan); }
+  .wl-stat-lbl { font-size:.72rem; color:var(--text-lo); margin-top:.3rem; text-transform:uppercase; letter-spacing:.06em; }
+  .wl-charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:1.25rem; }
+  .wl-chart-box { background:rgba(8,12,28,.85); border:1px solid var(--border); border-radius:1rem; padding:1.1rem; }
+  .wl-chart-box h4 { color:var(--text-mid); font-size:.82rem; margin:0 0 .75rem; text-transform:uppercase; letter-spacing:.05em; }
+
+  /* Detail */
+  .wl-detail { background:rgba(8,12,28,.85); border:1px solid var(--border); border-radius:.85rem;
+    padding:1rem; margin-top:1rem; font-size:.82rem; }
+  .wl-detail table { width:100%; border-collapse:collapse; }
+  .wl-detail th,.wl-detail td { padding:.3rem .5rem; border-bottom:1px solid rgba(71,85,105,.25); text-align:left; color:var(--text); }
+  .wl-detail th { color:var(--text-lo); font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+
+  /* ── Print / Weekly Work Summary ── */
+  @media print {
+    @page { size: landscape; margin: 0.45in 0.5in; }
+    #wl-bg, .wl-nav, .wl-content, .no-print { display: none !important; }
+    #wl-print-stub { display: block !important; }
+    body { background: #fff !important; color: #111 !important; font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; margin:0; }
+  }
+  #wl-print-stub {
+    display: none; background: #fff; color: #111;
+    font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt;
+  }
+  .ps-page { width:100%; border:1.5px solid #1e293b; border-radius:8px; overflow:hidden; }
+
+  /* Header */
+  .ps-header { background:#0f172a; color:#fff; padding:14px 22px; display:flex; justify-content:space-between; align-items:center; }
+  .ps-header-left .ps-title { margin:0; font-size:18pt; font-weight:800; letter-spacing:-.02em; color:#fff; }
+  .ps-header-left .ps-subtitle { margin:2px 0 0; font-size:10pt; color:#22d3ee; font-weight:600; letter-spacing:.01em; }
+  .ps-header-right { text-align:right; }
+  .ps-header-right .ps-week-label { font-size:7.5pt; text-transform:uppercase; letter-spacing:.08em; color:#64748b; }
+  .ps-header-right .ps-week-val { font-size:14pt; font-weight:800; color:#fbbf24; display:block; margin-top:1px; }
+  .ps-header-right .ps-ref { font-size:7.5pt; color:#64748b; margin-top:3px; }
+
+  /* Employee strip */
+  .ps-employee { background:#f8fafc; border-bottom:1.5px solid #e2e8f0; padding:9px 22px; display:flex; gap:32px; flex-wrap:wrap; align-items:flex-end; }
+  .ps-field { display:flex; flex-direction:column; }
+  .ps-field-lbl { font-size:6.5pt; text-transform:uppercase; letter-spacing:.07em; color:#64748b; font-weight:700; margin-bottom:1px; }
+  .ps-field-val { font-size:10pt; font-weight:700; color:#0f172a; }
+
+  /* Body */
+  .ps-body { display:flex; }
+  .ps-left { flex:1; padding:12px 16px; border-right:1px solid #e2e8f0; }
+  .ps-right { width:230px; padding:12px 16px; background:#fafafa; }
+  .ps-section-title { font-size:7pt; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:800; margin:0 0 6px; padding-bottom:3px; border-bottom:1.5px solid #e2e8f0; }
+
+  /* Time table */
+  .ps-time-table { width:100%; border-collapse:collapse; font-size:8.5pt; margin-bottom:10px; }
+  .ps-time-table thead tr { background:#f1f5f9; }
+  .ps-time-table th { color:#475569; text-align:left; padding:4px 7px; font-size:6.5pt; text-transform:uppercase; letter-spacing:.06em; border-bottom:1.5px solid #e2e8f0; font-weight:700; }
+  .ps-time-table td { padding:4px 7px; border-bottom:1px solid #f1f5f9; color:#1e293b; vertical-align:middle; }
+  .ps-time-table tr:last-child td { border-bottom:none; }
+  .ps-day-label { font-weight:700; color:#0f172a; white-space:nowrap; }
+  .ps-day-date { font-size:7pt; color:#64748b; font-weight:400; display:block; }
+  .ps-hrs { font-weight:700; color:#0369a1; text-align:right; }
+  .ps-wknd td { background:#fffbeb; }
+  .ps-total-row td { background:#f0f9ff; font-weight:700; border-top:1.5px solid #bae6fd; }
+
+  /* Pay summary */
+  .ps-pay-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; font-size:9pt; border-bottom:1px solid #f1f5f9; }
+  .ps-pay-lbl { color:#475569; }
+  .ps-pay-val { font-weight:600; color:#0f172a; }
+  .ps-pay-row.ps-ded .ps-pay-val { color:#dc2626; }
+  .ps-pay-row.ps-gross { background:#f8fafc; padding:5px 6px; border-radius:4px; margin:4px 0; border:none; }
+  .ps-pay-row.ps-net { border-top:2px solid #0f172a; margin-top:6px; padding-top:7px; border-bottom:none; }
+  .ps-pay-row.ps-net .ps-pay-lbl { font-weight:800; font-size:11pt; color:#0f172a; }
+  .ps-pay-row.ps-net .ps-pay-val { font-weight:800; font-size:13pt; color:#15803d; }
+
+  /* Check box */
+  .ps-check-box { margin-top:10px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:5px; }
+  .ps-photo { margin-top:10px; }
+  .ps-photo img { width:100%; max-height:110px; object-fit:contain; border:1px solid #e2e8f0; border-radius:5px; }
+
+  /* Footer */
+  .ps-footer { background:#0f172a; padding:6px 22px; font-size:7.5pt; color:#64748b; display:flex; justify-content:space-between; align-items:center; }
+  .ps-footer a { color:#22d3ee; text-decoration:none; }
+  .ps-footer-right { color:#475569; }
+</style>
+
+<div id="wl-bg" aria-hidden="true"></div>
+<script>
+(function(){
+  const bg=document.getElementById('wl-bg');
+  for(let i=0;i<55;i++){
+    const el=document.createElement('div'); el.className='wl-pixel';
+    el.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${8+Math.random()*18}s;animation-delay:${-Math.random()*20}s;opacity:${.04+Math.random()*.1}`;
+    bg.appendChild(el);
+  }
+})();
+</script>
+
+<div id="wl-app">
+
+  <!-- LOGIN -->
+  <div v-if="!role" class="wl-login">
+    <div class="wl-login-box">
+      <div class="wl-login-badge"><span class="wl-login-badge-dot"></span>Cronan AI Staff Portal</div>
+      <h2>WorkLog Pro</h2>
+      <p class="wl-login-subtitle">Sign in to access your time records and analytics.</p>
+      <input class="wl-input" type="text" placeholder="Username" v-model="loginForm.username" @keyup.enter="doLogin" />
+      <input class="wl-input" type="password" placeholder="Password" v-model="loginForm.password" @keyup.enter="doLogin" />
+      <button class="wl-btn wl-btn-primary" style="width:100%;padding:.75rem" @click="doLogin" :disabled="loginLoading">
+        [[ loginLoading ? 'Signing in…' : 'Sign In' ]]
+      </button>
+      <div v-if="loginError" class="wl-error">[[ loginError ]]</div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div v-else>
+    <div class="wl-nav">
+      <span class="wl-nav-title">WorkLog Pro<span>®</span></span>
+      <button v-if="role==='admin'" :class="['wl-tab',tab==='entry'?'active':'']" @click="tab='entry'">Time Entry</button>
+      <button :class="['wl-tab',tab==='history'?'active':'']" @click="tab='history';loadHistory()">History</button>
+      <button v-if="role==='admin'" :class="['wl-tab',tab==='employees'?'active':'']" @click="tab='employees';loadEmployees()">Employees</button>
+      <button :class="['wl-tab',tab==='analytics'?'active':'']" @click="tab='analytics';loadAnalytics()">Analytics</button>
+      <span style="color:var(--text-lo);font-size:.8rem;margin-left:.5rem">[[ role==='admin'?'👑 Admin':'👤 '+sessionUsername ]]</span>
+      <button class="wl-btn wl-btn-danger wl-btn-sm no-print" @click="doLogout">Logout</button>
+    </div>
+
+    <div class="wl-content">
+
+      <!-- ===== TIME ENTRY TAB ===== -->
+      <div v-if="tab==='entry' && role==='admin'">
+
+        <!-- Settings -->
+        <div class="wl-card" v-if="showSettings">
+          <h3>⚙️ Settings</h3>
+          <div class="wl-row" style="margin-bottom:.75rem">
+            <span class="wl-label">Name</span>
+            <input class="wl-input-sm wide" v-model="settings.name" placeholder="Your Name" />
+            <span class="wl-label" style="margin-left:.75rem">Phone</span>
+            <input class="wl-input-sm wide" v-model="settings.phone" placeholder="Phone Number" />
+          </div>
+          <div class="wl-row" style="margin-bottom:.75rem">
+            <span class="wl-label">Rate $/hr</span>
+            <input class="wl-input-sm" type="number" v-model.number="settings.rate" placeholder="0.00" />
+          </div>
+          <div style="margin-bottom:.75rem">
+            <div class="wl-label" style="margin-bottom:.4rem">Locations (shown as checkboxes on time entry)</div>
+            <div v-for="(loc,i) in settings.locations" :key="i" class="wl-row" style="margin-bottom:.35rem">
+              <input class="wl-input-sm wide" v-model="settings.locations[i]" :placeholder="'Location '+(i+1)" />
+              <button class="wl-btn wl-btn-danger wl-btn-sm" @click="settings.locations.splice(i,1)" v-if="settings.locations.length>1">✕</button>
+            </div>
+            <button class="wl-btn wl-btn-muted wl-btn-sm" style="margin-top:.35rem" @click="settings.locations.push('')">+ Add Location</button>
+          </div>
+          <div class="wl-row" style="margin-bottom:.75rem">
+            <label style="color:var(--text-mid);font-size:.85rem;display:flex;align-items:center;gap:.4rem">
+              <input type="checkbox" v-model="settings.weekend" style="accent-color:var(--cyan-dim)" />
+              Include Weekend (Sat &amp; Sun)
+            </label>
+          </div>
+          <button class="wl-btn wl-btn-success wl-btn-sm" @click="saveSettings">Save Settings</button>
+          <button class="wl-btn wl-btn-muted wl-btn-sm" style="margin-left:.5rem" @click="showSettings=false">Close</button>
+        </div>
+
+        <!-- Entry Header -->
+        <div class="wl-card">
+          <div class="wl-row" style="margin-bottom:1rem;gap:.75rem;flex-wrap:wrap">
+            <div>
+              <div class="wl-label">Week Ending</div>
+              <input class="wl-input-sm" type="date" v-model="entry.weekEnding" />
+            </div>
+            <div>
+              <div class="wl-label">Ref #</div>
+              <input class="wl-input-sm wide" v-model="entry.refNumber" placeholder="Auto-generated" />
+            </div>
+            <div>
+              <div class="wl-label">Bonus $</div>
+              <input class="wl-input-sm" type="number" v-model.number="entry.bonus" placeholder="0" />
+            </div>
+            <button class="wl-btn wl-btn-muted wl-btn-sm no-print" style="margin-top:1.1rem" @click="showSettings=!showSettings">⚙️ Settings</button>
+          </div>
+
+          <!-- Weekdays Mon–Fri -->
+          <div class="wl-section-title">📅 Weekdays (Mon – Fri)</div>
+          <div style="overflow-x:auto">
+            <table class="wl-table">
+              <thead><tr>
+                <th style="min-width:130px">Day / Date</th>
+                <th>Start</th><th>Stop</th><th>Break (min)</th>
+                <th style="min-width:170px">Locations</th>
+                <th style="min-width:160px">Task</th>
+                <th>Net Hrs</th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="day in weekdays" :key="day.name">
+                  <td>
+                    <span style="color:var(--cyan);font-weight:700">[[ day.name ]]</span>
+                    <span v-if="day.date" style="display:block;color:var(--text-lo);font-size:.75rem">[[ day.date ]]</span>
+                  </td>
+                  <td><input class="wl-input-sm" type="time" v-model="day.start" /></td>
+                  <td><input class="wl-input-sm" type="time" v-model="day.stop" /></td>
+                  <td><input class="wl-input-sm" type="number" v-model.number="day.breakMin" placeholder="0" style="width:75px" /></td>
+                  <td>
+                    <div class="wl-loc-dropdown" @click.stop>
+                      <div class="wl-loc-trigger" @click="day._locOpen=!day._locOpen">
+                        <span>[[ day.locations.length ? day.locations.join(', ') : 'Select…' ]]</span>
+                        <span class="arrow">▼</span>
+                      </div>
+                      <div class="wl-loc-menu" v-if="day._locOpen">
+                        <label v-for="loc in activeLocations" :key="loc" :class="['wl-loc-option', day.locations.includes(loc)?'selected':'']">
+                          <input type="checkbox" :value="loc" v-model="day.locations" />
+                          [[ loc ]]
+                        </label>
+                      </div>
+                    </div>
+                  </td>
+                  <td><input class="wl-input-sm wide" v-model="day.task" placeholder="Description" /></td>
+                  <td style="color:var(--cyan);font-weight:700">[[ netHours(day).toFixed(2) ]]</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Weekend Sat–Sun (optional) -->
+          <div v-if="settings.weekend">
+            <div class="wl-section-title" style="margin-top:1.25rem">📅 Weekend (Sat &amp; Sun)</div>
+            <div style="overflow-x:auto">
+              <table class="wl-table">
+                <thead><tr>
+                  <th style="min-width:130px">Day / Date</th>
+                  <th>Start</th><th>Stop</th><th>Break (min)</th>
+                  <th style="min-width:170px">Locations</th>
+                  <th style="min-width:160px">Task</th>
+                  <th>Net Hrs</th>
+                </tr></thead>
+                <tbody>
+                  <tr v-for="day in weekend" :key="day.name">
+                    <td>
+                      <span style="color:var(--amber);font-weight:700">[[ day.name ]]</span>
+                      <span v-if="day.date" style="display:block;color:var(--text-lo);font-size:.75rem">[[ day.date ]]</span>
+                    </td>
+                    <td><input class="wl-input-sm" type="time" v-model="day.start" /></td>
+                    <td><input class="wl-input-sm" type="time" v-model="day.stop" /></td>
+                    <td><input class="wl-input-sm" type="number" v-model.number="day.breakMin" placeholder="0" style="width:75px" /></td>
+                    <td>
+                      <div class="wl-loc-dropdown" @click.stop>
+                        <div class="wl-loc-trigger" @click="day._locOpen=!day._locOpen">
+                          <span>[[ day.locations.length ? day.locations.join(', ') : 'Select…' ]]</span>
+                          <span class="arrow">▼</span>
+                        </div>
+                        <div class="wl-loc-menu" v-if="day._locOpen">
+                          <label v-for="loc in activeLocations" :key="loc" :class="['wl-loc-option', day.locations.includes(loc)?'selected':'']">
+                            <input type="checkbox" :value="loc" v-model="day.locations" />
+                            [[ loc ]]
+                          </label>
+                        </div>
+                      </div>
+                    </td>
+                    <td><input class="wl-input-sm wide" v-model="day.task" placeholder="Description" /></td>
+                    <td style="color:var(--amber);font-weight:700">[[ netHours(day).toFixed(2) ]]</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Totals -->
+          <div class="wl-row" style="margin-top:1rem;gap:1.5rem;flex-wrap:wrap">
+            <div><span class="wl-label">Total Hours:</span> <strong style="color:var(--cyan);font-size:1.1rem">[[ totalHours.toFixed(2) ]]</strong></div>
+            <div><span class="wl-label">Gross Pay:</span> <strong style="color:var(--green);font-size:1.1rem">[[ '$'+grossPay.toFixed(2) ]]</strong></div>
+            <div><span class="wl-label">Deductions:</span> <strong style="color:var(--red);font-size:1.1rem">-[[ '$'+totalDeductions.toFixed(2) ]]</strong></div>
+            <div><span class="wl-label">Net Pay:</span> <strong style="color:var(--amber);font-size:1.2rem">[[ '$'+netPay.toFixed(2) ]]</strong></div>
+          </div>
+        </div>
+
+        <!-- Deductions -->
+        <div class="wl-card">
+          <h3>➖ Deductions</h3>
+          <div v-for="(ded,i) in entry.deductions" :key="i" class="wl-deduction-row">
+            <span style="color:var(--text-lo);font-size:.8rem;min-width:20px">[[ i+1 ]].</span>
+            <input class="wl-input-sm" type="number" v-model.number="ded.amount" placeholder="Amount $" style="width:120px" />
+            <input class="wl-input-sm wide" v-model="ded.reason" placeholder="Reason for deduction" style="flex:1;width:auto" />
+            <button class="wl-btn wl-btn-danger wl-btn-sm" @click="entry.deductions.splice(i,1)" v-if="entry.deductions.length>1">✕</button>
+          </div>
+          <button class="wl-btn wl-btn-muted wl-btn-sm" style="margin-top:.5rem" @click="entry.deductions.push({amount:0,reason:''})">+ Add Deduction</button>
+        </div>
+
+        <!-- Payment Info & Check Photo -->
+        <div class="wl-card">
+          <h3>💳 Payment Info</h3>
+          <div class="wl-row" style="gap:1rem;flex-wrap:wrap;margin-bottom:1rem">
+            <div>
+              <div class="wl-label">Check #</div>
+              <input class="wl-input-sm wide" v-model="entry.checkNumber" placeholder="Check number" />
+            </div>
+            <div>
+              <div class="wl-label">Date Paid</div>
+              <input class="wl-input-sm" type="date" v-model="entry.datePaid" />
+            </div>
+          </div>
+          <div class="wl-label" style="margin-bottom:.5rem">Check Photo (optional)</div>
+          <div class="wl-photo-area no-print" @click="$refs.photoInput.click()" @dragover.prevent @drop.prevent="onPhotoDrop($event)">
+            <div v-if="!entry.checkPhoto" style="color:var(--text-lo)">
+              📷 Click to upload or drag &amp; drop a photo of the check
+            </div>
+            <div v-else style="color:var(--green)">✓ Photo attached — click to replace</div>
+            <input ref="photoInput" type="file" accept="image/*" style="display:none" @change="onPhotoSelect($event)" />
+          </div>
+          <img v-if="entry.checkPhoto" :src="entry.checkPhoto" class="wl-photo-preview" alt="Check photo" />
+          <button v-if="entry.checkPhoto" class="wl-btn wl-btn-danger wl-btn-sm no-print" style="margin-top:.5rem" @click="entry.checkPhoto=''">Remove Photo</button>
+        </div>
+
+        <!-- Actions -->
+        <div class="wl-row no-print" style="gap:.75rem;margin-bottom:1.5rem">
+          <button class="wl-btn wl-btn-success" @click="saveEntry" :disabled="saveLoading">
+            [[ saveLoading ? 'Saving…' : '💾 Save Week' ]]
+          </button>
+          <button class="wl-btn wl-btn-primary" @click="printReport">🖨️ Print PDF</button>
+          <button class="wl-btn wl-btn-muted wl-btn-sm" @click="clearEntry">Clear</button>
+          <span v-if="saveMsg" :style="{color:saveMsg.startsWith('Error')?'var(--red)':'var(--green)',fontSize:'.85rem'}">[[ saveMsg ]]</span>
+        </div>
+      </div>
+
+      <!-- ===== HISTORY TAB ===== -->
+      <div v-if="tab==='history'">
+        <div class="wl-card">
+          <h3>📋 Work History</h3>
+          <div class="wl-row no-print" style="margin-bottom:1rem;gap:.75rem;flex-wrap:wrap">
+            <input class="wl-input-sm wide" v-model="histSearch" placeholder="Search ref # or week…" />
+            <input class="wl-input-sm" type="date" v-model="histFrom" title="From date" />
+            <input class="wl-input-sm" type="date" v-model="histTo" title="To date" />
+            <select v-if="role==='admin'" class="wl-input-sm wide" v-model="histEmpFilter" @change="loadHistory">
+              <option value="">All Employees</option>
+              <option v-for="e in employees" :key="e.id" :value="e.id">[[ e.username ]]</option>
+            </select>
+            <button class="wl-btn wl-btn-muted wl-btn-sm" @click="histSearch='';histFrom='';histTo='';histEmpFilter=''">Clear</button>
+          </div>
+          <div v-if="histLoading" style="color:var(--text-lo)">Loading…</div>
+          <div v-else-if="filteredHistory.length===0" style="color:var(--text-lo)">No records found.</div>
+          <table v-else class="wl-table">
+            <thead><tr>
+              <th>Week Ending</th><th>Ref #</th>
+              <th v-if="role==='admin'">Employee</th>
+              <th>Net Pay</th><th>Hours</th><th>Check #</th><th>Date Paid</th>
+              <th v-if="role==='admin'" class="no-print">Actions</th>
+            </tr></thead>
+            <tbody>
+              <tr v-for="rec in filteredHistory" :key="rec.id" @click="toggleDetail(rec)">
+                <td>[[ rec.week_ending ]]</td>
+                <td>[[ rec.ref_number ]]</td>
+                <td v-if="role==='admin'">[[ empName(rec.employee_id) ]]</td>
+                <td style="color:var(--green);font-weight:600">[[ '$'+Number(rec.net_pay).toFixed(2) ]]</td>
+                <td style="color:var(--cyan)">[[ recHours(rec) ]]</td>
+                <td style="color:var(--text-mid)">[[ recField(rec,'checkNumber') || '—' ]]</td>
+                <td style="color:var(--text-mid)">[[ recField(rec,'datePaid') || '—' ]]</td>
+                <td v-if="role==='admin'" class="no-print" @click.stop>
+                  <button class="wl-btn wl-btn-danger wl-btn-sm" @click="deleteRecord(rec.id)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- Detail -->
+          <div v-if="selectedRecord" class="wl-detail">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+              <strong style="color:var(--text-hi)">Detail — [[ selectedRecord.week_ending ]]</strong>
+              <button class="wl-btn wl-btn-muted wl-btn-sm no-print" @click="selectedRecord=null">✕</button>
+            </div>
+            <table>
+              <thead><tr><th>Day</th><th>Start</th><th>Stop</th><th>Break</th><th>Locations</th><th>Task</th><th>Net Hrs</th></tr></thead>
+              <tbody>
+                <tr v-for="d in parsedDetail" :key="d.name">
+                  <td>[[ d.name ]]</td><td>[[ d.start ]]</td><td>[[ d.stop ]]</td>
+                  <td>[[ d.breakMin ]]m</td>
+                  <td>[[ Array.isArray(d.locations) ? d.locations.join(', ') : (d.location||'') ]]</td>
+                  <td>[[ d.task ]]</td><td>[[ netHours(d).toFixed(2) ]]</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="parsedDeductions.length" style="margin-top:.75rem">
+              <div style="color:var(--text-lo);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Deductions</div>
+              <div v-for="d in parsedDeductions" :key="d.reason" style="color:var(--red);font-size:.85rem">
+                -$[[ Number(d.amount).toFixed(2) ]] — [[ d.reason ]]
+              </div>
+            </div>
+            <div v-if="parsedCheckInfo.checkNumber || parsedCheckInfo.datePaid" style="margin-top:.75rem;color:var(--text-mid);font-size:.85rem">
+              Check #[[ parsedCheckInfo.checkNumber ]] &nbsp;|&nbsp; Paid: [[ parsedCheckInfo.datePaid ]]
+            </div>
+            <div v-if="parsedCheckPhoto" style="margin-top:.75rem">
+              <div style="color:var(--text-lo);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Check Photo</div>
+              <img :src="parsedCheckPhoto" style="max-width:100%;max-height:250px;border-radius:.5rem" alt="Check" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== EMPLOYEES TAB ===== -->
+      <div v-if="tab==='employees' && role==='admin'">
+        <div class="wl-card">
+          <h3>👥 Employee Management</h3>
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem" class="no-print">
+            <input class="wl-input-sm wide" v-model="newEmp.username" placeholder="Username" />
+            <input class="wl-input-sm wide" type="password" v-model="newEmp.password" placeholder="Password" />
+            <button class="wl-btn wl-btn-success wl-btn-sm" @click="createEmployee">+ Add Employee</button>
+            <span v-if="empMsg" :style="{color:empMsg.startsWith('Error')?'var(--red)':'var(--green)',fontSize:'.85rem'}">[[ empMsg ]]</span>
+          </div>
+          <div v-if="empLoading" style="color:var(--text-lo)">Loading…</div>
+          <table v-else class="wl-table">
+            <thead><tr><th>Username</th><th>Status</th><th class="no-print">Actions</th></tr></thead>
+            <tbody>
+              <tr v-for="e in employees" :key="e.id">
+                <td style="color:var(--text-hi);font-weight:600">[[ e.username ]]</td>
+                <td><span :class="['wl-badge',e.is_active?'wl-badge-green':'wl-badge-red']">[[ e.is_active?'Active':'Inactive' ]]</span></td>
+                <td class="no-print">
+                  <button class="wl-btn wl-btn-sm" :style="{background:e.is_active?'rgba(248,113,113,.15)':'rgba(74,222,128,.15)',color:e.is_active?'var(--red)':'var(--green)',border:'1px solid',borderColor:e.is_active?'rgba(248,113,113,.3)':'rgba(74,222,128,.3)',marginRight:'.4rem'}" @click="toggleEmployee(e)">
+                    [[ e.is_active?'Deactivate':'Activate' ]]
+                  </button>
+                  <button class="wl-btn wl-btn-warn wl-btn-sm" @click="openReset(e)">Reset PW</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-if="resetTarget" class="wl-card no-print">
+          <h3>Reset Password — [[ resetTarget.username ]]</h3>
+          <div class="wl-row">
+            <input class="wl-input-sm wide" type="password" v-model="resetPw" placeholder="New password" />
+            <button class="wl-btn wl-btn-warn wl-btn-sm" @click="doResetPw">Update</button>
+            <button class="wl-btn wl-btn-muted wl-btn-sm" @click="resetTarget=null;resetPw=''">Cancel</button>
+            <span v-if="resetMsg" :style="{color:resetMsg.startsWith('Error')?'var(--red)':'var(--green)',fontSize:'.85rem'}">[[ resetMsg ]]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== ANALYTICS TAB ===== -->
+      <div v-if="tab==='analytics'">
+        <div class="wl-card">
+          <h3>📊 Analytics Dashboard</h3>
+          <div v-if="role==='admin'" class="wl-row no-print" style="margin-bottom:1rem">
+            <span class="wl-label">Employee</span>
+            <select class="wl-input-sm wide" v-model="analyticsEmpFilter" @change="loadAnalytics">
+              <option value="">All Employees</option>
+              <option v-for="e in employees" :key="e.id" :value="e.id">[[ e.username ]]</option>
+            </select>
+          </div>
+          <div v-if="analyticsLoading" style="color:var(--text-lo)">Loading…</div>
+          <div v-else>
+            <div class="wl-summary-grid">
+              <div class="wl-stat"><div class="wl-stat-val">[[ analytics.totalHours.toFixed(1) ]]</div><div class="wl-stat-lbl">Total Hours (YTD)</div></div>
+              <div class="wl-stat"><div class="wl-stat-val">[[ '$'+analytics.totalEarnings.toFixed(2) ]]</div><div class="wl-stat-lbl">Total Earnings (YTD)</div></div>
+              <div class="wl-stat"><div class="wl-stat-val">[[ analytics.avgHours.toFixed(1) ]]</div><div class="wl-stat-lbl">Avg Hours / Week</div></div>
+              <div class="wl-stat"><div class="wl-stat-val" style="font-size:1rem">[[ analytics.topLocation||'—' ]]</div><div class="wl-stat-lbl">Top Location</div></div>
+            </div>
+            <div class="wl-charts-grid">
+              <div class="wl-chart-box"><h4>Weekly Pay ($)</h4><canvas id="wl-chart-pay" height="220"></canvas></div>
+              <div class="wl-chart-box"><h4>Weekend vs Weekday Pay</h4><canvas id="wl-chart-wknd" height="220"></canvas></div>
+              <div class="wl-chart-box"><h4>Weekly Hours</h4><canvas id="wl-chart-hours" height="220"></canvas></div>
+              <div class="wl-chart-box"><h4>Hours by Location</h4><canvas id="wl-chart-loc" height="220"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /wl-content -->
+  </div><!-- /main app -->
+
+  <!-- ===== PRINT STUB (hidden on screen, shown on print) ===== -->
+  <div id="wl-print-stub" v-if="role==='admin'">
+    <div class="ps-page">
+
+      <!-- Header -->
+      <div class="ps-header">
+        <div class="ps-header-left">
+          <div class="ps-title">Weekly Work Summary</div>
+          <div class="ps-subtitle">Woodard Properties</div>
+        </div>
+        <div class="ps-header-right">
+          <div class="ps-week-label">Week Ending</div>
+          <span class="ps-week-val">[[ entry.weekEnding || '—' ]]</span>
+          <div class="ps-ref">Ref: [[ entry.refNumber || '—' ]]</div>
+        </div>
+      </div>
+
+      <!-- Employee info -->
+      <div class="ps-employee">
+        <div class="ps-field">
+          <span class="ps-field-lbl">Employee Name</span>
+          <span class="ps-field-val">[[ settings.name || '—' ]]</span>
+        </div>
+        <div class="ps-field">
+          <span class="ps-field-lbl">Phone</span>
+          <span class="ps-field-val">[[ settings.phone || '—' ]]</span>
+        </div>
+        <div class="ps-field">
+          <span class="ps-field-lbl">Rate</span>
+          <span class="ps-field-val">[[ '$' + (settings.rate||0).toFixed(2) + ' / hr' ]]</span>
+        </div>
+        <div class="ps-field">
+          <span class="ps-field-lbl">Check #</span>
+          <span class="ps-field-val">[[ entry.checkNumber || '—' ]]</span>
+        </div>
+        <div class="ps-field">
+          <span class="ps-field-lbl">Date Paid</span>
+          <span class="ps-field-val">[[ entry.datePaid || '—' ]]</span>
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="ps-body">
+
+        <!-- Left: time table -->
+        <div class="ps-left">
+          <div class="ps-section-title">Time Record</div>
+          <table class="ps-time-table">
+            <thead>
+              <tr>
+                <th>Day</th><th>Start</th><th>Stop</th><th>Break</th><th>Locations</th><th>Task</th><th style="text-align:right">Hrs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="day in entry.weekdays" :key="day.name">
+                <tr v-if="netHours(day)>0||day.start">
+                  <td class="ps-day-label">[[ day.name.slice(0,3) ]] <span class="ps-day-date">[[ day.date ]]</span></td>
+                  <td>[[ day.start||'—' ]]</td>
+                  <td>[[ day.stop||'—' ]]</td>
+                  <td>[[ day.breakMin ? day.breakMin+'m' : '—' ]]</td>
+                  <td>[[ day.locations.join(', ')||'—' ]]</td>
+                  <td>[[ day.task||'—' ]]</td>
+                  <td class="ps-hrs">[[ netHours(day).toFixed(2) ]]</td>
+                </tr>
+              </template>
+              <template v-if="settings.weekend" v-for="day in entry.weekend" :key="day.name">
+                <tr v-if="netHours(day)>0||day.start" class="ps-wknd">
+                  <td class="ps-day-label">[[ day.name.slice(0,3) ]] <span class="ps-day-date">[[ day.date ]]</span></td>
+                  <td>[[ day.start||'—' ]]</td>
+                  <td>[[ day.stop||'—' ]]</td>
+                  <td>[[ day.breakMin ? day.breakMin+'m' : '—' ]]</td>
+                  <td>[[ day.locations.join(', ')||'—' ]]</td>
+                  <td>[[ day.task||'—' ]]</td>
+                  <td class="ps-hrs">[[ netHours(day).toFixed(2) ]]</td>
+                </tr>
+              </template>
+              <tr class="ps-total-row">
+                <td colspan="6" style="text-align:right;color:#475569">Total Hours</td>
+                <td class="ps-hrs" style="color:#0369a1">[[ totalHours.toFixed(2) ]]</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Deductions table -->
+          <div v-if="entry.deductions.some(d=>d.amount>0)" style="margin-top:8px">
+            <div class="ps-section-title">Deductions</div>
+            <table class="ps-time-table">
+              <thead><tr><th>Reason</th><th style="text-align:right">Amount</th></tr></thead>
+              <tbody>
+                <template v-for="d in entry.deductions" :key="d.reason">
+                  <tr v-if="d.amount>0">
+                    <td>[[ d.reason||'—' ]]</td>
+                    <td style="text-align:right;color:#dc2626;font-weight:600">-$[[ Number(d.amount).toFixed(2) ]]</td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: pay summary + check photo -->
+        <div class="ps-right">
+          <div class="ps-section-title">Pay Summary</div>
+          <div class="ps-pay-row">
+            <span class="ps-pay-lbl">Total Hours</span>
+            <span class="ps-pay-val">[[ totalHours.toFixed(2) ]] hrs</span>
+          </div>
+          <div class="ps-pay-row">
+            <span class="ps-pay-lbl">Rate</span>
+            <span class="ps-pay-val">[[ '$'+(settings.rate||0).toFixed(2) ]]/hr</span>
+          </div>
+          <div class="ps-pay-row" v-if="entry.bonus>0">
+            <span class="ps-pay-lbl">Bonus</span>
+            <span class="ps-pay-val">+$[[ Number(entry.bonus).toFixed(2) ]]</span>
+          </div>
+          <div class="ps-pay-row">
+            <span class="ps-pay-lbl">Gross Pay</span>
+            <span class="ps-pay-val">$[[ grossPay.toFixed(2) ]]</span>
+          </div>
+          <template v-for="d in entry.deductions" :key="d.reason">
+            <div class="ps-pay-row ps-ded" v-if="d.amount>0">
+              <span class="ps-pay-lbl">[[ d.reason||'Deduction' ]]</span>
+              <span class="ps-pay-val">-$[[ Number(d.amount).toFixed(2) ]]</span>
+            </div>
+          </template>
+          <div class="ps-pay-row ps-net">
+            <span class="ps-pay-lbl">NET PAY</span>
+            <span class="ps-pay-val">$[[ netPay.toFixed(2) ]]</span>
+          </div>
+
+          <!-- Check info box -->
+          <div class="ps-check-box" v-if="entry.checkNumber||entry.datePaid">
+            <div class="ps-section-title">Payment</div>
+            <div class="ps-pay-row" v-if="entry.checkNumber">
+              <span class="ps-pay-lbl">Check #</span>
+              <span class="ps-pay-val">[[ entry.checkNumber ]]</span>
+            </div>
+            <div class="ps-pay-row" v-if="entry.datePaid">
+              <span class="ps-pay-lbl">Date Paid</span>
+              <span class="ps-pay-val">[[ entry.datePaid ]]</span>
+            </div>
+          </div>
+
+          <!-- Check photo -->
+          <div class="ps-photo" v-if="entry.checkPhoto">
+            <div class="ps-section-title" style="margin-top:10px">Check Copy</div>
+            <img :src="entry.checkPhoto" alt="Check" />
+          </div>
+        </div>
+
+      </div><!-- /ps-body -->
+
+      <!-- Footer -->
+      <div class="ps-footer">
+        <span>© [[ new Date().getFullYear() ]] Cronan Technology® | <span style="color:#22d3ee">cronantech.com</span></span>
+        <span class="ps-footer-right">Printed: [[ new Date().toLocaleDateString() ]]</span>
+      </div>
+
+    </div><!-- /ps-page -->
+  </div><!-- /wl-print-stub -->
+
+</div><!-- /wl-app -->
+
+<script>
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const API_BASE = params.get('api') || '';
+
+  const WKDAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const WKEND  = ['Saturday','Sunday'];
+
+  function makeDay(name){ return {name, date:'', start:'', stop:'', breakMin:0, locations:[], task:'', _locOpen:false}; }
+
+  // Given a Friday date string, return the Mon–Sun dates for that week
+  function weekDates(fridayStr) {
+    if (!fridayStr) return {};
+    const fri = new Date(fridayStr + 'T00:00:00');
+    const fmt = d => d.toLocaleDateString('en-US', {month:'numeric', day:'numeric'});
+    return {
+      Monday:    fmt(new Date(fri.getTime() - 4*86400000)),
+      Tuesday:   fmt(new Date(fri.getTime() - 3*86400000)),
+      Wednesday: fmt(new Date(fri.getTime() - 2*86400000)),
+      Thursday:  fmt(new Date(fri.getTime() - 1*86400000)),
+      Friday:    fmt(fri),
+      Saturday:  fmt(new Date(fri.getTime() + 1*86400000)),
+      Sunday:    fmt(new Date(fri.getTime() + 2*86400000)),
+    };
+  }
+  function timeToMins(t){ if(!t) return 0; const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function netHours(day){
+    const s=timeToMins(day.start), e=timeToMins(day.stop);
+    if(!s||!e||e<=s) return 0;
+    return Math.max(0,(e-s-(day.breakMin||0))/60);
+  }
+  function isWeekend(name){ return name==='Saturday'||name==='Sunday'; }
+
+  const {createApp} = Vue;
+  createApp({
+    delimiters:['[[',']]'],
+    data(){
+      return {
+        role:null, sessionUsername:'', tab:'entry',
+        loginForm:{username:'',password:''}, loginLoading:false, loginError:'',
+        showSettings:false,
+        settings:{ name:'', phone:'', rate:0, locations:[''], weekend:false },
+        entry:{
+          weekEnding:'', refNumber:'', bonus:0,
+          weekdays: WKDAYS.map(makeDay),
+          weekend:  WKEND.map(makeDay),
+          deductions:[{amount:0, reason:''}],
+          checkNumber:'', datePaid:'', checkPhoto:''
+        },
+        saveLoading:false, saveMsg:'',
+        historyRecords:[], histLoading:false,
+        histSearch:'', histFrom:'', histTo:'', histEmpFilter:'',
+        selectedRecord:null,
+        employees:[], empLoading:false, empMsg:'',
+        newEmp:{username:'',password:''},
+        resetTarget:null, resetPw:'', resetMsg:'',
+        analyticsLoading:false, analyticsEmpFilter:'',
+        analytics:{totalHours:0,totalEarnings:0,avgHours:0,topLocation:''},
+        charts:{}
+      };
+    },
+    computed:{
+      activeLocations(){ return this.settings.locations.filter(l=>l.trim()); },
+      weekdays(){ return this.entry.weekdays; },
+      weekend(){ return this.entry.weekend; },
+      totalHours(){
+        const wd = this.entry.weekdays.reduce((s,d)=>s+netHours(d),0);
+        const we = this.settings.weekend ? this.entry.weekend.reduce((s,d)=>s+netHours(d),0) : 0;
+        return wd+we;
+      },
+      grossPay(){ return this.totalHours*(this.settings.rate||0)+(this.entry.bonus||0); },
+      totalDeductions(){ return this.entry.deductions.reduce((s,d)=>s+(Number(d.amount)||0),0); },
+      netPay(){ return Math.max(0, this.grossPay - this.totalDeductions); },
+      filteredHistory(){
+        return this.historyRecords.filter(r=>{
+          const q=this.histSearch.toLowerCase();
+          const mt=!q||r.week_ending.toLowerCase().includes(q)||r.ref_number.toLowerCase().includes(q)||(r.full_data&&r.full_data.toLowerCase().includes(q));
+          const mf=!this.histFrom||r.week_ending>=this.histFrom;
+          const mt2=!this.histTo||r.week_ending<=this.histTo;
+          return mt&&mf&&mt2;
+        });
+      },
+      parsedDetail(){
+        if(!this.selectedRecord) return [];
+        try{ const d=JSON.parse(this.selectedRecord.full_data); return [...(d.weekdays||d.days||[]),...(d.weekend||[])]; }catch{return [];}
+      },
+      parsedDeductions(){
+        if(!this.selectedRecord) return [];
+        try{ return JSON.parse(this.selectedRecord.full_data).deductions||[]; }catch{return [];}
+      },
+      parsedCheckInfo(){
+        if(!this.selectedRecord) return {};
+        try{ const d=JSON.parse(this.selectedRecord.full_data); return {checkNumber:d.checkNumber||'',datePaid:d.datePaid||''}; }catch{return {};}
+      },
+      parsedCheckPhoto(){
+        if(!this.selectedRecord) return '';
+        try{ return JSON.parse(this.selectedRecord.full_data).checkPhoto||''; }catch{return '';}
+      }
+    },
+    watch:{
+      'entry.weekEnding'(val){
+        const dates = weekDates(val);
+        [...this.entry.weekdays, ...this.entry.weekend].forEach(d => {
+          d.date = dates[d.name] || '';
+        });
+      }
+    },
+    methods:{
+      netHours,
+      async doLogin(){
+        this.loginLoading=true; this.loginError='';
+        try{
+          const r=await fetch(`${API_BASE}/api/worklog/login`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.loginForm)});
+          const d=await r.json();
+          if(r.ok){ this.role=d.role; this.sessionUsername=this.loginForm.username; this.tab=d.role==='admin'?'entry':'history'; if(d.role==='viewer') this.loadHistory(); else this.loadEmployees(); }
+          else{ this.loginError=d.error||'Login failed'; }
+        }catch{ this.loginError='Network error — is the backend running?'; }
+        this.loginLoading=false;
+      },
+      async doLogout(){
+        await fetch(`${API_BASE}/api/worklog/logout`,{method:'POST',credentials:'include'});
+        this.role=null; this.tab='entry'; this.loginForm={username:'',password:''};
+      },
+      loadSettings(){
+        try{ const s=localStorage.getItem('wl_settings'); if(s) this.settings={...this.settings,...JSON.parse(s)}; }catch{}
+        if(!this.settings.locations||!this.settings.locations.length) this.settings.locations=[''];
+      },
+      saveSettings(){ localStorage.setItem('wl_settings',JSON.stringify(this.settings)); this.showSettings=false; },
+      genRef(){ const d=this.entry.weekEnding.replace(/-/g,'')||Date.now(); return `WL-${d}-${Math.random().toString(36).slice(2,6).toUpperCase()}`; },
+      clearEntry(){
+        this.entry={weekEnding:'',refNumber:'',bonus:0,weekdays:WKDAYS.map(makeDay),weekend:WKEND.map(makeDay),deductions:[{amount:0,reason:''}],checkNumber:'',datePaid:'',checkPhoto:''};
+        this.saveMsg='';
+      },
+      onPhotoSelect(e){
+        const file=e.target.files[0]; if(!file) return;
+        const reader=new FileReader();
+        reader.onload=ev=>{ this.entry.checkPhoto=ev.target.result; };
+        reader.readAsDataURL(file);
+      },
+      onPhotoDrop(e){
+        const file=e.dataTransfer.files[0]; if(!file||!file.type.startsWith('image/')) return;
+        const reader=new FileReader();
+        reader.onload=ev=>{ this.entry.checkPhoto=ev.target.result; };
+        reader.readAsDataURL(file);
+      },
+      async saveEntry(){
+        if(!this.entry.weekEnding){this.saveMsg='Error: Week ending required';return;}
+        if(!this.entry.refNumber) this.entry.refNumber=this.genRef();
+        this.saveLoading=true; this.saveMsg='';
+        const allDays=[...this.entry.weekdays,...(this.settings.weekend?this.entry.weekend:[])];
+        const payload={
+          week_ending:this.entry.weekEnding, ref_number:this.entry.refNumber,
+          net_pay:this.netPay,
+          full_data:JSON.stringify({
+            name:this.settings.name, phone:this.settings.phone,
+            weekEnding:this.entry.weekEnding, refNumber:this.entry.refNumber,
+            bonus:this.entry.bonus, weekdays:this.entry.weekdays, weekend:this.entry.weekend,
+            days:allDays, totalHours:this.totalHours, grossPay:this.grossPay,
+            deductions:this.entry.deductions, totalDeductions:this.totalDeductions, netPay:this.netPay,
+            checkNumber:this.entry.checkNumber, datePaid:this.entry.datePaid,
+            checkPhoto:this.entry.checkPhoto
+          })
+        };
+        try{
+          const r=await fetch(`${API_BASE}/api/worklog/save`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+          const d=await r.json();
+          this.saveMsg=r.ok?'✓ Saved successfully':`Error: ${d.error}`;
+        }catch{this.saveMsg='Error: Network error';}
+        this.saveLoading=false;
+      },
+      printReport(){ window.print(); },
+      async loadHistory(){
+        this.histLoading=true; this.selectedRecord=null;
+        let url=`${API_BASE}/api/worklog/history`;
+        if(this.role==='admin'&&this.histEmpFilter) url+=`?employee_id=${this.histEmpFilter}`;
+        try{ const r=await fetch(url,{credentials:'include'}); if(r.ok) this.historyRecords=await r.json(); }catch{}
+        this.histLoading=false;
+      },
+      async deleteRecord(id){
+        if(!confirm('Delete this record?')) return;
+        const r=await fetch(`${API_BASE}/api/worklog/delete`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+        if(r.ok){ this.historyRecords=this.historyRecords.filter(x=>x.id!==id); if(this.selectedRecord&&this.selectedRecord.id===id) this.selectedRecord=null; }
+      },
+      toggleDetail(rec){ this.selectedRecord=this.selectedRecord&&this.selectedRecord.id===rec.id?null:rec; },
+      empName(id){ if(id===0) return 'Admin'; const e=this.employees.find(x=>x.id===id); return e?e.username:`#${id}`; },
+      recHours(rec){ try{ return (JSON.parse(rec.full_data).totalHours||0).toFixed(2); }catch{return '—';} },
+      recField(rec,field){ try{ return JSON.parse(rec.full_data)[field]||''; }catch{return '';} },
+      async loadEmployees(){
+        this.empLoading=true;
+        try{ const r=await fetch(`${API_BASE}/api/worklog/employees`,{credentials:'include'}); if(r.ok) this.employees=await r.json(); }catch{}
+        this.empLoading=false;
+      },
+      async createEmployee(){
+        this.empMsg='';
+        if(!this.newEmp.username||!this.newEmp.password){this.empMsg='Error: Username and password required';return;}
+        const r=await fetch(`${API_BASE}/api/worklog/employees`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.newEmp)});
+        const d=await r.json();
+        if(r.ok){this.empMsg=`✓ Employee "${d.username}" created`;this.newEmp={username:'',password:''};await this.loadEmployees();}
+        else{this.empMsg=`Error: ${d.error}`;}
+      },
+      async toggleEmployee(e){
+        const r=await fetch(`${API_BASE}/api/worklog/employees/${e.id}`,{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:e.is_active?0:1})});
+        if(r.ok) await this.loadEmployees();
+      },
+      openReset(e){this.resetTarget=e;this.resetPw='';this.resetMsg='';},
+      async doResetPw(){
+        this.resetMsg='';
+        if(!this.resetPw){this.resetMsg='Error: Password required';return;}
+        const r=await fetch(`${API_BASE}/api/worklog/employees/${this.resetTarget.id}/reset-password`,{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:this.resetPw})});
+        const d=await r.json();
+        this.resetMsg=r.ok?'✓ Password updated':`Error: ${d.error}`;
+        if(r.ok){this.resetTarget=null;this.resetPw='';}
+      },
+      async loadAnalytics(){
+        this.analyticsLoading=true;
+        Object.values(this.charts).forEach(c=>{try{c.destroy();}catch{}});
+        this.charts={};
+        let url=`${API_BASE}/api/worklog/history`;
+        if(this.analyticsEmpFilter) url+=`?employee_id=${this.analyticsEmpFilter}`;
+        try{
+          const r=await fetch(url,{credentials:'include'});
+          if(!r.ok){this.analyticsLoading=false;return;}
+          this.buildAnalytics(await r.json());
+        }catch{}
+        this.analyticsLoading=false;
+      },
+      buildAnalytics(records){
+        let totalHours=0,totalEarnings=0,weekdayPay=0,weekendPay=0;
+        const weekPay={},weekHours={},locHours={};
+        records.forEach(rec=>{
+          totalEarnings+=rec.net_pay||0;
+          const wk=rec.week_ending;
+          weekPay[wk]=(weekPay[wk]||0)+(rec.net_pay||0);
+          try{
+            const fd=JSON.parse(rec.full_data);
+            const hrs=fd.totalHours||0; totalHours+=hrs;
+            weekHours[wk]=(weekHours[wk]||0)+hrs;
+            const rate=fd.totalHours>0?(rec.net_pay-(fd.bonus||0))/fd.totalHours:0;
+            ([...(fd.weekdays||[]),(fd.weekend||[])].flat()).forEach(d=>{
+              const dh=netHours(d);
+              const locs=Array.isArray(d.locations)?d.locations:(d.location?[d.location]:[]);
+              locs.forEach(l=>{ if(l) locHours[l]=(locHours[l]||0)+dh; });
+              if(isWeekend(d.name)) weekendPay+=dh*rate; else weekdayPay+=dh*rate;
+            });
+          }catch{}
+        });
+        const numWeeks=Object.keys(weekPay).length||1;
+        const topLoc=Object.entries(locHours).sort((a,b)=>b[1]-a[1])[0];
+        this.analytics={totalHours,totalEarnings,avgHours:totalHours/numWeeks,topLocation:topLoc?topLoc[0]:''};
+        this.$nextTick(()=>{
+          const wkL=Object.keys(weekPay).sort();
+          const cd={plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'rgba(71,85,105,.3)'}},y:{ticks:{color:'#64748b'},grid:{color:'rgba(71,85,105,.3)'}}}};
+          const payCtx=document.getElementById('wl-chart-pay');
+          if(payCtx) this.charts.pay=new Chart(payCtx,{type:'bar',data:{labels:wkL,datasets:[{label:'Net Pay ($)',data:wkL.map(k=>weekPay[k]||0),backgroundColor:'#0ea5e9',borderRadius:4}]},options:{...cd,responsive:true}});
+          const wkndCtx=document.getElementById('wl-chart-wknd');
+          if(wkndCtx) this.charts.wknd=new Chart(wkndCtx,{type:'doughnut',data:{labels:['Weekday','Weekend'],datasets:[{data:[weekdayPay,weekendPay],backgroundColor:['#0ea5e9','#fbbf24'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#94a3b8'}}},responsive:true}});
+          const hrsCtx=document.getElementById('wl-chart-hours');
+          if(hrsCtx) this.charts.hours=new Chart(hrsCtx,{type:'bar',data:{labels:wkL,datasets:[{label:'Hours',data:wkL.map(k=>weekHours[k]||0),backgroundColor:'#4ade80',borderRadius:4}]},options:{...cd,responsive:true}});
+          const locCtx=document.getElementById('wl-chart-loc');
+          if(locCtx){const ll=Object.keys(locHours);const clrs=['#0ea5e9','#fbbf24','#4ade80','#a855f7','#f87171','#06b6d4','#84cc16'];this.charts.loc=new Chart(locCtx,{type:'bar',data:{labels:ll,datasets:[{label:'Hours',data:ll.map(k=>locHours[k]||0),backgroundColor:ll.map((_,i)=>clrs[i%clrs.length]),borderRadius:4}]},options:{...cd,responsive:true,indexAxis:'y'}});}
+        });
+      }
+    },
+    async mounted(){
+      this.loadSettings();
+      // Close location dropdowns on outside click
+      document.addEventListener('click', () => {
+        [...this.entry.weekdays, ...this.entry.weekend].forEach(d => d._locOpen = false);
+      });
+      try{
+        const sso=await fetch(window.location.origin+'/api/worklog-auth',{method:'POST',credentials:'include'});
+        if(sso.ok){const d=await sso.json();this.role=d.role;this.sessionUsername=d.name;this.tab='entry';await this.loadEmployees();return;}
+      }catch{}
+      try{
+        const r=await fetch(`${API_BASE}/api/worklog/session`,{credentials:'include'});
+        if(r.ok){const d=await r.json();if(d.authenticated){this.role=d.role;this.tab=d.role==='admin'?'entry':'history';if(d.role!=='admin') await this.loadHistory(); else await this.loadEmployees();}}
+      }catch{}
+    }
+  }).mount('#wl-app');
+})();
+</script>
+</body>
+</html>

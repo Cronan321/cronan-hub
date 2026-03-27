@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cronan-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WORKLOG_ADMIN_USERNAME
+        sync: false
+      - key: WORKLOG_ADMIN_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: DB_DIR
+        value: /opt/render/project/src
