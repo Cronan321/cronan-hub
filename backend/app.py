@@ -4,7 +4,7 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 import resend
-from worklog_api import init_worklog
+
 
 load_dotenv()
 
@@ -112,7 +112,6 @@ def migrate_db():
 
 init_db()
 migrate_db()
-init_worklog(app)
 
 # --- Your 3 Pillars ---
 @app.route('/api/agency', methods=['GET'])
