@@ -134,35 +134,15 @@ export default function OperationalGuidelines() {
           </p>
         </section>
 
-        {/* Article VII */}
+        {/* Investor Callout */}
         <section className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6 text-cyan-400">Article VII: Strategic Partnerships & Investment Opportunities</h2>
-          
-          <div className="space-y-6 text-slate-300">
-            <div>
-              <h3 className="text-lg font-bold text-amber-500 mb-2">7.1 The Vision for Scalability</h3>
-              <p>Cronan AI is positioned at the critical intersection of human intelligence and machine learning. As the demand for highly specialized, bias-free, and domain-specific AI models grows exponentially, our human-in-the-loop (HITL) infrastructure is designed to scale rapidly to meet B2B enterprise needs.</p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-amber-500 mb-2">7.2 Open for Seed Investment & Angel Partnerships</h3>
-              <p>As we approach our official launch in April 2026, Cronan Technology is actively exploring strategic financial partnerships. We welcome inquiries from angel investors, venture capitalists, and industry partners who recognize the vital need for high-fidelity dataset creation and rigorous AI fine-tuning.</p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-amber-500 mb-2">7.3 Capital Allocation Strategy</h3>
-              <p className="mb-3">Investment capital will be strategically deployed to accelerate our growth across three core pillars:</p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li><strong>Workforce Expansion:</strong> Scaling our elite remote workforce of 1099 data specialists and fast-tracking our top performers into full-time W-2 roles to handle enterprise-level data volumes.</li>
-                <li><strong>Technological Infrastructure:</strong> Enhancing the proprietary backend systems of The Cronan Hub to streamline secure data ingestion, annotation workflows, and model auditing.</li>
-                <li><strong>B2B Market Penetration:</strong> Aggressively expanding our outbound sales initiatives to capture a larger market share of early-stage AI startups and established enterprises needing urgent model refinement.</li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-amber-500 mb-2">7.4 Investor Inquiries</h3>
-              <p>We seek partners who bring more than just capital—we are looking for strategic alignment. Interested parties are encouraged to request our executive summary and introductory pitch materials directly from the founding team.</p>
-            </div>
+          <div className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-6 text-center">
+            <p className="text-slate-300 text-lg mb-3">
+              For investor information and strategic partnership opportunities, visit our dedicated Investors page.
+            </p>
+            <Link href="/investors" className="inline-block text-amber-500 hover:text-amber-400 font-semibold transition-colors">
+              View Investor Information →
+            </Link>
           </div>
         </section>
 

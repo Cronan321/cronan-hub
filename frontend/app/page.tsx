@@ -7,9 +7,9 @@ export default function Home() {
   const [newsletterData, setNewsletterData] = useState({ name: '', email: '' });
   const [subscribed, setSubscribed] = useState(false);
 
-  // This calculates the exact time until April 1, 2026 @ 12:00 PM
+  // This calculates the exact time until August 5, 2026 @ 3:00 PM Eastern Time
   useEffect(() => {
-    const targetDate = new Date('2026-04-01T12:00:00').getTime();
+    const targetDate = new Date('2026-08-05T15:00:00-04:00').getTime();
 
     const interval = setInterval(() => {
       const now = new Date().getTime();

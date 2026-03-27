@@ -9,6 +9,7 @@ export default function Header() {
     { href: '/guidelines', label: 'Guidelines', color: 'hover:text-cyan-400' },
     { href: '/agency', label: 'Join Roster', color: 'hover:text-cyan-400' },
     { href: '/b2b', label: 'Enterprise', color: 'hover:text-amber-500' },
+    { href: '/investors', label: 'Investors', color: 'hover:text-amber-500' },
   ];
 
   return (

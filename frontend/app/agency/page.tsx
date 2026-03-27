@@ -1,9 +1,18 @@
- "use client";
+"use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
 
 export default function AgencyApply() {
-  const [formData, setFormData] = useState({ name: '', email: '', specialty: 'coding', experience: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    specialty: 'coding',
+    experience: '',
+    phone: '',
+    linkedinUrl: '',
+    availabilityHours: '',
+    agreedToTerms: false,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -15,7 +24,15 @@ export default function AgencyApply() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          specialty: formData.specialty,
+          experience: formData.experience,
+          phone: formData.phone,
+          linkedinUrl: formData.linkedinUrl,
+          availabilityHours: formData.availabilityHours !== '' ? Number(formData.availabilityHours) : undefined,
+        }),
       });
 
       if (response.ok) {
@@ -78,6 +95,48 @@ export default function AgencyApply() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Phone Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-300">Phone Number</label>
+                <input 
+                  required 
+                  type="tel" 
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all text-white"
+                  placeholder="+1 (555) 000-0000"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
+              </div>
+
+              {/* Availability Hours Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-300">Available Hours Per Week</label>
+                <input 
+                  required 
+                  type="number" 
+                  min="1"
+                  max="168"
+                  className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all text-white"
+                  placeholder="e.g. 20"
+                  value={formData.availabilityHours}
+                  onChange={(e) => setFormData({...formData, availabilityHours: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* LinkedIn / Portfolio URL */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-300">LinkedIn or Portfolio URL <span className="text-slate-500 font-normal">(optional)</span></label>
+              <input 
+                type="url" 
+                className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-lg focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all text-white"
+                placeholder="https://linkedin.com/in/yourprofile"
+                value={formData.linkedinUrl}
+                onChange={(e) => setFormData({...formData, linkedinUrl: e.target.value})}
+              />
+            </div>
+
             {/* Specialty Dropdown */}
             <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-300">Primary AI Training Specialty</label>
@@ -93,9 +152,17 @@ export default function AgencyApply() {
               </select>
             </div>
 
+            {/* Work Type (read-only) */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-300">Work Type</label>
+              <div className="w-full px-4 py-3 bg-slate-950/60 border border-slate-700 rounded-lg text-slate-400 select-none">
+                Remote Only
+              </div>
+            </div>
+
             {/* Experience Textarea */}
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-300">Platform Experience & Background</label>
+              <label className="text-sm font-semibold text-slate-300">Platform Experience &amp; Background</label>
               <textarea 
                 required 
                 rows={4}
@@ -104,6 +171,35 @@ export default function AgencyApply() {
                 value={formData.experience}
                 onChange={(e) => setFormData({...formData, experience: e.target.value})}
               ></textarea>
+            </div>
+
+            {/* Resume Upload (disabled — coming soon) */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-slate-300">Resume Upload</label>
+              <input 
+                disabled
+                type="file"
+                className="w-full px-4 py-3 bg-slate-950/40 border border-slate-700 rounded-lg text-slate-600 cursor-not-allowed"
+              />
+              <p className="text-xs text-slate-500">Coming soon — file upload will be available at launch</p>
+            </div>
+
+            {/* Terms Agreement */}
+            <div className="flex items-start gap-3">
+              <input 
+                required
+                type="checkbox"
+                id="agreedToTerms"
+                checked={formData.agreedToTerms}
+                onChange={(e) => setFormData({...formData, agreedToTerms: e.target.checked})}
+                className="mt-1 w-4 h-4 accent-cyan-400 cursor-pointer flex-shrink-0"
+              />
+              <label htmlFor="agreedToTerms" className="text-sm text-slate-400 leading-relaxed cursor-pointer">
+                I have read and agree to the{' '}
+                <Link href="/guidelines" className="text-cyan-400 hover:underline">Cronan AI® Operational Guidelines</Link>
+                {' '}and{' '}
+                <Link href="/privacy" className="text-cyan-400 hover:underline">Privacy Policy</Link>
+              </label>
             </div>
 
             {/* Submit Button */}
@@ -115,9 +211,9 @@ export default function AgencyApply() {
               {isSubmitting ? "Submitting..." : "Submit Application"}
             </button>
             <p className="mt-4 text-center text-[10px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-  By submitting, you agree to the <a href="/guidelines" className="text-cyan-400 hover:underline">Cronan AI® Operational Guidelines</a> and <a href="/privacy" className="text-amber-500 hover:underline">Privacy Policy</a>. 
-  Your data is protected under our strict confidentiality and secure human-in-the-loop handling protocols.
-</p>
+              By submitting, you agree to the <a href="/guidelines" className="text-cyan-400 hover:underline">Cronan AI® Operational Guidelines</a> and <a href="/privacy" className="text-amber-500 hover:underline">Privacy Policy</a>. 
+              Your data is protected under our strict confidentiality and secure human-in-the-loop handling protocols.
+            </p>
 
           </form>
         )}

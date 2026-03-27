@@ -2,59 +2,74 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Staff accounts — email is the username, password set via env vars
-const STAFF: Record<string, { name: string; title: string; accentColor: string; password: string }> = {
-  'brianna@cronantech.com': {
-    name: 'Brianna Cronan',
-    title: 'Founder',
-    accentColor: 'amber',
-    password: process.env.NEXT_PUBLIC_BRIANNA_PASSWORD || 'brianna-admin-2026',
-  },
-  'bethany@cronantech.com': {
-    name: 'Bethany Cronan',
-    title: 'Co-Founder',
-    accentColor: 'cyan',
-    password: process.env.NEXT_PUBLIC_BETHANY_PASSWORD || 'bethany-admin-2026',
-  },
-};
-
 interface Applicant {
   id: number; name: string; email: string; specialty: string; experience: string; status: string;
+  phone?: string; availability_hours?: number; linkedin_url?: string;
 }
 interface BusinessLead {
   id: number; company_name: string; contact_name: string; email: string; project_type: string; status: string;
+  phone?: string; company_size?: string; industry?: string; budget_range?: string; timeline?: string; referral_source?: string;
 }
 interface NewsletterSubscriber {
   id: number; name: string; email: string;
 }
+interface CurrentUser {
+  name: string; accentColor: string;
+}
 
 export default function AdminDashboard() {
-  const [currentUser, setCurrentUser] = useState<typeof STAFF[string] | null>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'trainers' | 'business' | 'newsletter'>('trainers');
+  const [activeTab, setActiveTab] = useState<'trainers' | 'business' | 'newsletter' | 'worklog'>('trainers');
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [leads, setLeads] = useState<BusinessLead[]>([]);
   const [subscribers, setSubscribers] = useState<NewsletterSubscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  // Check existing session on mount
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(res => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then(data => {
+        if (data && data.name) {
+          setCurrentUser({ name: data.name, accentColor: data.accentColor });
+        }
+      })
+      .catch(() => {/* no session */});
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const normalizedEmail = emailInput.trim().toLowerCase();
-    const account = STAFF[normalizedEmail];
-    if (!account) {
-      setAuthError('No account found for that email.');
-      return;
-    }
-    if (passwordInput !== account.password) {
-      setAuthError('Incorrect password. Try again.');
-      setPasswordInput('');
-      return;
-    }
-    setCurrentUser(account);
     setAuthError('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailInput.trim().toLowerCase(), password: passwordInput }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCurrentUser({ name: data.name, accentColor: data.accentColor });
+      } else {
+        setAuthError(data.error || 'Invalid credentials');
+        setPasswordInput('');
+      }
+    } catch {
+      setAuthError('Login failed. Please try again.');
+    }
+  };
+
+  const handleSignOut = async () => {
+    await fetch('/api/auth/logout', { method: 'DELETE' });
+    setCurrentUser(null);
+    setEmailInput('');
+    setPasswordInput('');
   };
 
   useEffect(() => {
@@ -158,13 +173,13 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-4">
             {/* Logged-in user badge */}
             <div className={`px-4 py-2 rounded-lg border text-sm font-semibold ${isAmber ? 'bg-amber-900/20 border-amber-800/40 text-amber-400' : 'bg-cyan-900/20 border-cyan-800/40 text-cyan-400'}`}>
-              {currentUser.title}: {currentUser.name}
+              {currentUser.name}
             </div>
             <span className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm font-semibold text-slate-400">
               {applicants.length + leads.length + subscribers.length} Records
             </span>
             <button
-              onClick={() => { setCurrentUser(null); setEmailInput(''); setPasswordInput(''); }}
+              onClick={handleSignOut}
               className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm font-semibold text-slate-400 hover:text-rose-400 hover:border-rose-800 transition-colors"
             >
               Sign Out
@@ -185,6 +200,12 @@ export default function AdminDashboard() {
             className={`px-6 py-3 rounded-lg font-bold transition-all duration-300 ${activeTab === 'newsletter' ? 'bg-emerald-900/40 text-emerald-400 border border-emerald-500/50 shadow-[0_0_15px_rgba(52,211,153,0.2)]' : 'bg-slate-900 text-slate-500 border border-slate-800 hover:text-slate-300'}`}>
             Newsletter ({subscribers.length})
           </button>
+          {isAmber && (
+            <button onClick={() => setActiveTab('worklog')}
+              className={`px-6 py-3 rounded-lg font-bold transition-all duration-300 ${activeTab === 'worklog' ? 'bg-amber-900/40 text-amber-400 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-900 text-slate-500 border border-slate-800 hover:text-slate-300'}`}>
+              WorkLog Pro
+            </button>
+          )}
         </div>
 
         <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-lg border border-slate-800 overflow-hidden">
@@ -195,23 +216,35 @@ export default function AdminDashboard() {
                 <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase text-xs tracking-wider">
                   <tr>
                     <th className="px-6 py-4 font-medium">Applicant</th>
+                    <th className="px-6 py-4 font-medium">Phone</th>
                     <th className="px-6 py-4 font-medium">Specialty</th>
+                    <th className="px-6 py-4 font-medium">Avail. hrs/wk</th>
+                    <th className="px-6 py-4 font-medium">LinkedIn</th>
                     <th className="px-6 py-4 font-medium w-1/3">Experience</th>
                     <th className="px-6 py-4 font-medium text-right">Action / Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {isLoading ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500">Loading secure database...</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">Loading secure database...</td></tr>
                   ) : applicants.length === 0 ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500">No applications in the queue.</td></tr>
+                    <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-500">No applications in the queue.</td></tr>
                   ) : applicants.map(app => (
                     <tr key={`trainer-${app.id}`} className="hover:bg-slate-800/50 transition-colors duration-200">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-white">{app.name}</div>
                         <div className="text-xs text-cyan-400 mt-1">{app.email}</div>
                       </td>
+                      <td className="px-6 py-4 text-slate-300">{app.phone || '—'}</td>
                       <td className="px-6 py-4 text-slate-300 capitalize">{app.specialty}</td>
+                      <td className="px-6 py-4 text-slate-300">{app.availability_hours ?? '—'}</td>
+                      <td className="px-6 py-4 text-slate-300">
+                        {app.linkedin_url ? (
+                          <a href={app.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline truncate block max-w-[160px]" title={app.linkedin_url}>
+                            {app.linkedin_url.replace(/^https?:\/\/(www\.)?/, '')}
+                          </a>
+                        ) : '—'}
+                      </td>
                       <td className="px-6 py-4 text-slate-400 truncate max-w-xs" title={app.experience}>{app.experience}</td>
                       <td className="px-6 py-4 text-right">
                         {app.status === 'Pending Review' ? (
@@ -235,15 +268,20 @@ export default function AdminDashboard() {
                   <tr>
                     <th className="px-6 py-4 font-medium">Company</th>
                     <th className="px-6 py-4 font-medium">Contact</th>
+                    <th className="px-6 py-4 font-medium">Phone</th>
+                    <th className="px-6 py-4 font-medium">Industry</th>
+                    <th className="px-6 py-4 font-medium">Size</th>
                     <th className="px-6 py-4 font-medium">Objective</th>
+                    <th className="px-6 py-4 font-medium">Budget</th>
+                    <th className="px-6 py-4 font-medium">Timeline</th>
                     <th className="px-6 py-4 font-medium text-right">Action / Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
                   {isLoading ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500">Loading secure database...</td></tr>
+                    <tr><td colSpan={9} className="px-6 py-8 text-center text-slate-500">Loading secure database...</td></tr>
                   ) : leads.length === 0 ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-500">No B2B leads currently.</td></tr>
+                    <tr><td colSpan={9} className="px-6 py-8 text-center text-slate-500">No B2B leads currently.</td></tr>
                   ) : leads.map(lead => (
                     <tr key={`lead-${lead.id}`} className="hover:bg-slate-800/50 transition-colors duration-200">
                       <td className="px-6 py-4 font-semibold text-white">{lead.company_name}</td>
@@ -251,7 +289,12 @@ export default function AdminDashboard() {
                         <div className="text-slate-300">{lead.contact_name}</div>
                         <div className="text-xs text-amber-500 mt-1">{lead.email}</div>
                       </td>
+                      <td className="px-6 py-4 text-slate-300">{lead.phone || '—'}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.industry || '—'}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.company_size || '—'}</td>
                       <td className="px-6 py-4 text-slate-400">{lead.project_type}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.budget_range || '—'}</td>
+                      <td className="px-6 py-4 text-slate-300">{lead.timeline || '—'}</td>
                       <td className="px-6 py-4 text-right">
                         {lead.status === 'New Lead' ? (
                           <div className="flex justify-end gap-2">
@@ -290,6 +333,17 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            )}
+
+            {activeTab === 'worklog' && (
+              <div className="p-0">
+                <iframe
+                  src="/worklog"
+                  className="w-full border-0 rounded-b-2xl"
+                  style={{ height: 'calc(100vh - 220px)', minHeight: '600px' }}
+                  title="WorkLog Pro"
+                />
+              </div>
             )}
 
           </div>
